@@ -104,9 +104,10 @@ public class Git {
                 indexLines.add(hashedFile + " " + printName);
             }
             FileWriter indexWriter = new FileWriter("git/index");
-            for (String i : indexLines) {
-                indexWriter.write(i + "\n");
+            for (int i = 0; i < indexLines.size()-1; i++) {
+                indexWriter.write(indexLines.get(i) + "\n");
             }
+            indexWriter.write(indexLines.get(indexLines.size()-1));
             indexWriter.close();
             indexReader.close();
         } catch (IOException e) {
