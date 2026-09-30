@@ -1,36 +1,33 @@
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Base64;
+import java.util.HexFormat;
 import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.List;
 
 public class Git {
     public static void main(String[] args) {
-        init();
-        blob("helloworld.txt");
-        blob("heresthething.txt");
+        indexFile("./Git.java");
     }
 
     public static void init() {
-        File a = new File("git/");
-        File b = new File("git/objects/");
-        File c = new File("git/INDEX");
-        File d = new File("git/HEAD");
-        if (!a.exists() && !b.exists() && !c.exists() && !d.exists()) {
+        File git = new File("git/");
+        File obj = new File("git/objects/");
+        File index = new File("git/index");
+        File head = new File("git/HEAD");
+        if (git.exists() && obj.exists() && index.exists() && head.exists()) {
             System.out.println("Git Repository Already Exists");
         } else {
             System.out.println("Git Repository Created");
-            a.mkdir();
-            b.mkdir();
+            git.mkdir();
+            obj.mkdir();
             try {
-                c.createNewFile();
-                d.createNewFile();
+                index.createNewFile();
+                head.createNewFile();
             } catch (IOException e) {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
@@ -38,13 +35,13 @@ public class Git {
         }
     }
 
-    public static String hash(String input) {
+    public static String hashString(String input) {
         byte[] input_bytes = input.getBytes();
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-1");
             md.update(input_bytes);
             byte[] hashed_bytes = md.digest();
-            return Base64.getEncoder().encodeToString(hashed_bytes);
+            return HexFormat.of().formatHex(hashed_bytes);
         } catch (NoSuchAlgorithmException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
@@ -55,7 +52,7 @@ public class Git {
     public static void blob(String filePath) {
         try {
             String fileContents = getTextOfFile(filePath);
-            String hashedFile = hash(fileContents);
+            String hashedFile = hashString(fileContents);
             FileWriter blobWriter = new FileWriter("git/objects/" + hashedFile);
             blobWriter.write(fileContents);
             indexFile(filePath);
@@ -86,27 +83,31 @@ public class Git {
 
     public static void indexFile(String filePath) {
         try {
-            BufferedReader indexReader = new BufferedReader(new FileReader("git/INDEX"));
+            BufferedReader indexReader = new BufferedReader(new FileReader("git/index"));
             String line;
             boolean hasAdded = false;
+            File parent = new File("..");
+            String parentName = parent.getAbsoluteFile().getParentFile().getName();
+            String printName = parentName + filePath.substring(1);
             List<String> indexLines = new ArrayList<>();
             while ((line = indexReader.readLine()) != null) {
-                if (line.contains(" " + filePath)) {
-                    String hashedFile = hash(getTextOfFile(filePath));
-                    indexLines.add(hashedFile + " " + filePath);
+                if (line.contains(" " + printName)) {
+                    String hashedFile = hashString(getTextOfFile(filePath));
+                    indexLines.add(hashedFile + " " + printName);
                     hasAdded = true;
                 } else {
                     indexLines.add(line);
                 }
             }
             if (!hasAdded) {
-                String hashedFile = hash(getTextOfFile(filePath));
-                indexLines.add(hashedFile + " " + filePath);
+                String hashedFile = hashString(getTextOfFile(filePath));
+                indexLines.add(hashedFile + " " + printName);
             }
-            FileWriter indexWriter = new FileWriter("git/INDEX");
-            for (String i : indexLines) {
-                indexWriter.write(i + "\n");
+            FileWriter indexWriter = new FileWriter("git/index");
+            for (int i = 0; i < indexLines.size()-1; i++) {
+                indexWriter.write(indexLines.get(i) + "\n");
             }
+            indexWriter.write(indexLines.get(indexLines.size()-1));
             indexWriter.close();
             indexReader.close();
         } catch (IOException e) {
