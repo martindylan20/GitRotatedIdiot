@@ -7,16 +7,24 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.io.FileWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class Git {
     public static void main(String[] args) {
-        // blob("./heresthething.txt");
-        // blob("./directory/file1");
-        // blob("./directory/folder/file2");
-        // blob("./directory/folder/file3");
-        System.out.println(createTree(getTextOfFile("list.txt"), "GitRotatedIdiot/directory/folder"));
+        init();
 
+        blob("./heresthething.txt");
+        blob("./directory/file1");
+        blob("./directory/folder/file2");
+        blob("./directory/folder/file3");
+
+        indexFile("./heresthething.txt");
+        indexFile("./directory/file1");
+        indexFile("./directory/folder/file2");
+        indexFile("./directory/folder/file3");
+
+        System.out.println(treeIndex());
     }
 
     public static void init() {
@@ -150,7 +158,47 @@ public class Git {
             fw.close();
             return treeHash;
         } catch (Exception e) {
-            System.err.println(e);
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public static String treeIndex() {
+        try {
+            ArrayList<String> indexArray = new ArrayList<>(Arrays.asList(getTextOfFile("./git/index").split("\n")));
+            
+            for (int i = 0; i < indexArray.size(); i++) {
+                indexArray.set(i, "blob " + indexArray.get(i));
+            }
+            String index = "";
+            String deepPath = "";
+            String root = new File("..").getAbsoluteFile().getParentFile().getName();
+            
+            while (!deepPath.equals(root)) {
+                deepPath = "";
+                for (String string : indexArray) {
+                    if ((deepPath.length() - deepPath.replace("/", "").length()) < (string.length() - string.replace("/", "").length())) {
+                        deepPath = new File(string.substring(string.indexOf(' ', string.indexOf(' ') + 1) + 1)).getParent();
+                    }
+                }
+                ArrayList<Integer> remove = new ArrayList<>();
+                for (int i = 0; i < indexArray.size(); i++) {
+                    if (indexArray.get(i).contains(deepPath)) {
+                        remove.add(i);
+                    }
+                }
+                index = String.join("\n", indexArray).strip();
+                indexArray.add("tree " + createTree(index, deepPath) + " " + deepPath);
+                for (int i = 0; i < remove.size(); i++) {
+                    indexArray.remove((int) remove.get(i)-i);
+                }
+            }
+            FileWriter fw = new FileWriter("./git/index");
+            fw.write(indexArray.get(0));
+            fw.close();
+            return createTree(index, deepPath);
+        } catch (Exception e) {
+            e.printStackTrace();
             return null;
         }
     }
