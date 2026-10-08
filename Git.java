@@ -11,7 +11,12 @@ import java.util.List;
 
 public class Git {
     public static void main(String[] args) {
-        indexFile("./Git.java");
+        // blob("./heresthething.txt");
+        // blob("./directory/file1");
+        // blob("./directory/folder/file2");
+        // blob("./directory/folder/file3");
+        System.out.println(createTree(getTextOfFile("list.txt"), "GitRotatedIdiot/directory/folder"));
+
     }
 
     public static void init() {
@@ -113,6 +118,40 @@ public class Git {
         } catch (IOException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
+        }
+    }
+
+    public static String createTree(String workingList, String dirPath) {
+        try {
+            String[] lines = workingList.split("\n");
+            String tree = "";
+            for (String line : lines) {
+                String[] part = line.split(" ", 3);
+                int slashPos = part[2].lastIndexOf('/');
+                String dir;
+                String name;
+                if (slashPos == -1) {
+                    dir = "";
+                    name = part[2];
+                } else {
+                    dir = part[2].substring(0, slashPos);
+                    name = part[2].substring(slashPos + 1);
+                }
+                if (dir.equals(dirPath)) {
+                    tree += part[0] + " " + part[1] + " " + name + "\n";
+                }
+            }
+            if (tree.endsWith("\n")) {
+                tree = tree.substring(0, tree.length()-1);
+            }
+            String treeHash = hashString(tree);
+            FileWriter fw = new FileWriter("./git/objects/" + treeHash);
+            fw.write(tree);
+            fw.close();
+            return treeHash;
+        } catch (Exception e) {
+            System.err.println(e);
+            return null;
         }
     }
 }
