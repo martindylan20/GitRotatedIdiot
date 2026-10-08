@@ -7,11 +7,24 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.io.FileWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class Git {
     public static void main(String[] args) {
-        indexFile("./Git.java");
+        init();
+
+        blob("./heresthething.txt");
+        blob("./directory/file1");
+        blob("./directory/folder/file2");
+        blob("./directory/folder/file3");
+
+        indexFile("./heresthething.txt");
+        indexFile("./directory/file1");
+        indexFile("./directory/folder/file2");
+        indexFile("./directory/folder/file3");
+
+        System.out.println(treeIndex());
     }
 
     public static void init() {
@@ -113,6 +126,80 @@ public class Git {
         } catch (IOException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
+        }
+    }
+
+    public static String createTree(String workingList, String dirPath) {
+        try {
+            String[] lines = workingList.split("\n");
+            String tree = "";
+            for (String line : lines) {
+                String[] part = line.split(" ", 3);
+                int slashPos = part[2].lastIndexOf('/');
+                String dir;
+                String name;
+                if (slashPos == -1) {
+                    dir = "";
+                    name = part[2];
+                } else {
+                    dir = part[2].substring(0, slashPos);
+                    name = part[2].substring(slashPos + 1);
+                }
+                if (dir.equals(dirPath)) {
+                    tree += part[0] + " " + part[1] + " " + name + "\n";
+                }
+            }
+            if (tree.endsWith("\n")) {
+                tree = tree.substring(0, tree.length()-1);
+            }
+            String treeHash = hashString(tree);
+            FileWriter fw = new FileWriter("./git/objects/" + treeHash);
+            fw.write(tree);
+            fw.close();
+            return treeHash;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public static String treeIndex() {
+        try {
+            ArrayList<String> indexArray = new ArrayList<>(Arrays.asList(getTextOfFile("./git/index").split("\n")));
+            
+            for (int i = 0; i < indexArray.size(); i++) {
+                indexArray.set(i, "blob " + indexArray.get(i));
+            }
+            String index = "";
+            String deepPath = "";
+            String root = new File("..").getAbsoluteFile().getParentFile().getName();
+            
+            while (!deepPath.equals(root)) {
+                deepPath = "";
+                for (String string : indexArray) {
+                    if ((deepPath.length() - deepPath.replace("/", "").length()) < (string.length() - string.replace("/", "").length())) {
+                        deepPath = new File(string.substring(string.indexOf(' ', string.indexOf(' ') + 1) + 1)).getParent();
+                    }
+                }
+                ArrayList<Integer> remove = new ArrayList<>();
+                for (int i = 0; i < indexArray.size(); i++) {
+                    if (indexArray.get(i).contains(deepPath)) {
+                        remove.add(i);
+                    }
+                }
+                index = String.join("\n", indexArray).strip();
+                indexArray.add("tree " + createTree(index, deepPath) + " " + deepPath);
+                for (int i = 0; i < remove.size(); i++) {
+                    indexArray.remove((int) remove.get(i)-i);
+                }
+            }
+            FileWriter fw = new FileWriter("./git/index");
+            fw.write(indexArray.get(0));
+            fw.close();
+            return createTree(index, deepPath);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
         }
     }
 }
